@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'dart:math'; //Proporciona funciones matemáticas, como pi, que se usa para rotar la imagen del personaje.
 import 'package:flutter/material.dart';
 
 class MyBoy extends StatelessWidget{
@@ -13,7 +13,7 @@ class MyBoy extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
 
-    int directionAsInt = 1;
+    int directionAsInt = 1; //Convierte la dirección del personaje ('left' o 'right') en un valor entero (0 o 1). Esto se usa para rotar la imagen del personaje.
 
     if (boyDirection == 'right'){
       directionAsInt = 1;
@@ -25,12 +25,12 @@ class MyBoy extends StatelessWidget{
 
     if (attackBoySpriteCount > 0){
       return Container(
-        child: Transform(
+        child: Transform( //Rota la imagen del personaje en el eje Y usando Matrix4.rotationY.
                   alignment: Alignment.center,
-                  transform: Matrix4.rotationY(pi * directionAsInt),
-              child: Image.asset('lib/images/attack' +
+                  transform: Matrix4.rotationY(pi * directionAsInt), //Si directionAsInt es 0, la imagen no se rota (dirección izquierda). Si es 1, la imagen se rota 180 grados (dirección derecha).
+              child: Image.asset('lib/images/attack' +   
             boySpriteCount.toString() +
-            '.png'),
+            '.png'),  //Carga la imagen de ataque correspondiente al fotograma actual
         )
 
       );
@@ -38,7 +38,7 @@ class MyBoy extends StatelessWidget{
 
     if (boyDirection == 'left'){
       return Container(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.bottomCenter, //Alinea la imagen en la parte inferior del contenedor.
         height: 100,
         width: 100,
         child: Image.asset('lib/images/per' +
