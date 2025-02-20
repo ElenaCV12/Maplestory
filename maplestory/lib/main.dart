@@ -50,6 +50,9 @@ class _HomePageState extends State<HomePage> {
   double boyPosY = 1;
   String boyDirection = 'right';
   int attackBoySpriteCount = 0;
+  int boyHealth = 5; // Salud inicial del personaje
+  bool isGameOver = false; // Estado del juego
+  bool isGameRestart = false; //Reinicia el juego
 
   //loading scren---controlar la pantalla de carga
   var loadingScreenColor = Colors.blue[100];
@@ -62,6 +65,14 @@ class _HomePageState extends State<HomePage> {
    String attackMessage = '';
    bool showAttackMessage = false;
 
+   //estado del caracol
+   bool isSnailDead = false; // Estado del caracol
+   int snailHealth = 3; // Salud inicial del caracol
+
+    // Temporizadores
+  Timer? snailTimer;
+  Timer? teddyTimer;
+  Timer? attackTimer;
 
   //Inicia el juego, llamando a los métodos
   void playNow(){
@@ -89,6 +100,37 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+void restartGame() {
+  setState(() {
+    // Cancela los temporizadores existentes
+    snailTimer?.cancel();
+    teddyTimer?.cancel();
+    attackTimer?.cancel();
+
+    boyHealth = 5;
+
+    snailPosX = 0.5;
+    snailDirection = 'left';
+    isSnailDead = false;
+    snailHealth = 3;
+
+    teddyPosX = 0;
+    teddyDirection = 'right';
+
+
+    boyPosX = -0.5;
+    boyPosY = 1;
+    boyDirection = 'right';
+    attackBoySpriteCount = 0;
+
+    isGameOver = false;
+
+    // Reiniciar los temporizadores
+    moveSnail();
+    moveTeddy();
+  });
+}
+
   //Maneja la animación de ataque del personaje y verifica si el ataque golpea al caracol.
   void attack() {
   setState(() {
@@ -103,9 +145,16 @@ class _HomePageState extends State<HomePage> {
     });
 
     if (attackBoySpriteCount == 5) {
-      if (boyDirection == 'right' && boyPosX + 0.2 > snailPosX) {
+      // Verifica si el ataque golpea al caracol
+      if (boyDirection == 'right' && boyPosX + 0.2 > snailPosX && !isSnailDead) {
         setState(() {
-          attackMessage = 'HIT'; // Actualiza el mensaje a "HIT"
+          snailHealth--; // Reduce la salud del caracol
+          if (snailHealth <= 0) {
+            isSnailDead = true; // Mata al caracol si su salud llega a cero
+            attackMessage = 'SNAIL DEFEATED!';
+          } else {
+            attackMessage = 'HIT! Health: $snailHealth';
+          }
           showAttackMessage = true;
         });
       } else {
@@ -116,7 +165,7 @@ class _HomePageState extends State<HomePage> {
       }
       attackBoySpriteCount = 0; // Reinicia la animación de ataque
       timer.cancel();
-      
+
       Timer(Duration(seconds: 2), () {
         setState(() {
           showAttackMessage = false; // Oculta el mensaje
@@ -124,59 +173,119 @@ class _HomePageState extends State<HomePage> {
       });
     }
   });
-  }
+}
+
+
+void showGameOverDialog() {
+  setState(() {
+    isGameOver = true; // Marca el juego como terminado
+  });
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        title: Text("Game Over"),
+        content: Text("Boy has been defeated."),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Cierra el diálogo
+              // Aquí puedes reiniciar el juego o salir
+            },
+            child: Text("OK"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+  //Maneja la salud del personaje
+void reduceBoyHealth() {
+  setState(() {
+    boyHealth--; // Reduce la salud del personaje
+    if (boyHealth <= 0) {
+      boyHealth = 0; // Asegúrate de que la salud no sea negativa
+
+      // Cancela todos los temporizadores
+      snailTimer?.cancel();
+      teddyTimer?.cancel();
+      attackTimer?.cancel();
+
+      showGameOverDialog(); // Muestra el diálogo de "Game Over"
+    }
+  });
+}
+
 
   //Maneja el movimiento del oso
-  void moveTeddy(){
-    Timer.periodic(Duration(milliseconds: 100), (timer){
-      setState(() {
-        teddySpriteCount++;
+void moveTeddy() {
+  teddyTimer = Timer.periodic(Duration(milliseconds: 250), (timer) {
+    if (isGameOver) {
+      timer.cancel(); // Detiene el temporizador si el juego terminó
+      return;
+    }
 
-        if (teddySpriteCount == 19){
-          teddySpriteCount = 1;
-        }
+    setState(() {
+      teddySpriteCount++;
 
-        if ((teddyPosX - boyPosX).abs() > 0.2){
-          if  (boyDirection == 'right'){
-            teddyPosX = boyPosX - 0.2;
-          }else if (boyDirection == 'left'){
-            teddyPosX = boyPosX + 0.2;
-          }
-        }
+      if (teddySpriteCount == 19) {
+        teddySpriteCount = 1;
+      }
 
-        if (teddyPosX - boyPosX > 0){
-          teddyDirection = 'left';
-        }else {
-          teddyDirection = 'right';
+      if ((teddyPosX - boyPosX).abs() > 0.2) {
+        if (boyDirection == 'right') {
+          teddyPosX = boyPosX - 0.2;
+        } else if (boyDirection == 'left') {
+          teddyPosX = boyPosX + 0.2;
         }
-      });
+      }
+
+      if (teddyPosX - boyPosX > 0) {
+        teddyDirection = 'left';
+      } else {
+        teddyDirection = 'right';
+      }
     });
-  }
+  });
+}
 
   //Maneja el movimiento del caracol
-  void moveSnail (){
-    Timer.periodic(Duration(milliseconds: 150), (timer) {
-      setState(() {
-        snailSpriteCount++;
+void moveSnail() {
+  snailTimer = Timer.periodic(Duration(milliseconds: 150), (timer) {
+    if (isSnailDead || isGameOver) {
+      timer.cancel(); // Detiene el temporizador si el caracol está muerto o el juego terminó
+      return;
+    }
 
-        if (snailDirection == 'left'){
-          snailPosX -= 0.01;
-        } else {
-          snailPosX += 0.01;
-        }
+    setState(() {
+      snailSpriteCount++;
 
-        if (snailPosX < 0.3){
-          snailDirection = 'right';
-        } else if (snailPosX > 0.6){
-          snailDirection = 'left';
-        }
+      if (snailDirection == 'left') {
+        snailPosX -= 0.01;
+      } else {
+        snailPosX += 0.01;
+      }
 
-        if (snailSpriteCount == 5){
-          snailSpriteCount = 1;
-          }
-      });
+      if (snailPosX < 0.3) {
+        snailDirection = 'right';
+      } else if (snailPosX > 0.6) {
+        snailDirection = 'left';
+      }
+
+      if (snailSpriteCount == 5) {
+        snailSpriteCount = 1;
+      }
+
+      // Verificar colisión con el "boy"
+      if ((snailPosX - boyPosX).abs() < 0.1 && !isSnailDead) {
+        reduceBoyHealth(); // Reduce la salud del "boy" si hay colisión
+      }
     });
-  }
+  });
+}
 
 
   //Controlan el movimineto del personaje principal
@@ -208,8 +317,13 @@ class _HomePageState extends State<HomePage> {
   //Se maneja la animación cambiando los sprites en intervalos regulares
   //Los sprites son imagenes para representar personajes --- se cicla el movimiento
   Timer.periodic(Duration(milliseconds: 70), (timer){
-    time += 0.05;
-    height = -4.9 * time * time + 2.5 * time; // Ajusta la fórmula para un salto más realista
+    time += 0.10; // Incremento actual
+    //Reduce el valor para un salto más lento: time += 0.03;.
+    //Aumenta el valor para un salto más rápido: time += 0.08;.
+    height = -3 * time * time + 3 * time; // Ajusta la fórmula para un salto más realista // Salto más alto y lento
+    //Aumenta 2.5 para un salto más alto.
+    //Reduce 4.9 para un salto más lento y suave.
+
 
     setState(() {
       if (initialHeight - height > 1){
@@ -229,6 +343,18 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: Column(
         children: [
+          // Mostrar la salud del "boy"
+        Padding(
+          padding: EdgeInsets.only(top: 20),
+          child: Text(
+            'Boy Health: $boyHealth',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
            // Mensaje de ataque
        Visibility(
           visible: showAttackMessage, // Controla la visibilidad del mensaje
@@ -252,11 +378,13 @@ class _HomePageState extends State<HomePage> {
                 child: Stack(
                   children: [
                     Container(
-                      alignment: Alignment(snailPosX, 1), //posicionar un widget hijo dentro de su widget padre
-                      child: BlueSnail(
-                      snailDirection: snailDirection,
-                      snailSpriteCount: snailSpriteCount,
-                    ),
+                      alignment: Alignment(snailPosX, 1),
+                      child: isSnailDead
+                      ? SizedBox.shrink() // Oculta el caracol si está muerto
+                      : BlueSnail(
+                        snailDirection: snailDirection,
+                        snailSpriteCount: snailSpriteCount,
+                       ),
                     ),
                     Container(
                       alignment: Alignment(teddyPosX, 1),
@@ -299,34 +427,38 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         MyButton(
                           text: 'PLAY',
-                          function: (){
+                          function: isGameOver ? null : (){
                             playNow();
                           },
                         ),
                         MyButton(
                           text: 'ATTACK',
-                          function: (){
+                          function: isGameOver ? null : (){
                             attack();
                           }
                         ),
                         MyButton(
                           text: '←',
-                          function: (){
+                          function: isGameOver ? null : (){
                             moveLeft();
                           },
                         ),
                         MyButton(
                           text: '↑',
-                          function: (){
+                          function: isGameOver ? null : (){
                             jump();
                           },
                         ),
                         MyButton(
                           text: '→',
-                          function: (){
+                          function: isGameOver ? null : (){
                             moveRight();
                           },
-                        )
+                        ),
+                        MyButton(
+                        text: 'RESTART',
+                        function: isGameOver ? () { restartGame(); } : null,
+                        ),
                       ],
                     ),
                   ],
